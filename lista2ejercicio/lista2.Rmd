@@ -59,5 +59,8 @@ glimpse(file)
 
 mod1 <- lm(file$V7 ~ file$V10)
 print(mod1)
+plot(mod1)
+plot(file$V7,file$V10)
+abline(mod1)
 ```
 
