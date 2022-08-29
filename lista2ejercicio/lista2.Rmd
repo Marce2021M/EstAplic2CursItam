@@ -57,10 +57,22 @@ glimpse(file)
 
 ```{r}
 
-mod1 <- lm(file$V7 ~ file$V10)
+mod1 <- lm(V7 ~ V10, data=file)
 print(mod1)
 plot(mod1)
-plot(file$V7,file$V10)
-abline(mod1)
-```
 
+```
+```{r}
+plot(file$V10,file$V7)
+abline(mod1)
+abline(h=0, lty=2)
+```
+ 
+```{r}
+summary(mod1)
+anova(mod1)
+```
+```{r}
+
+```
+ 
