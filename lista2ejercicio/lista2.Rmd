@@ -72,7 +72,49 @@ abline(h=0, lty=2)
 summary(mod1)
 anova(mod1)
 ```
+# Incisos del a) al b)
+
+## Ploteando residuales:
+
+
 ```{r}
+plot(file$V10, mod1$residuals)
+```
+## Coeficientes pedidos
+
+```{r}
+cat(paste("El estimado observado b_0 =",mod1$coefficients[1]))
+cat(paste("\nEl estimado observado b_1 =",mod1$coefficients[2]))
+cat(paste("\nEl estimado observado de sigma (error estándar residual) =",summary(mod1)$sigma))
+cat(paste("\nEl p-value de la regresión (F-statistic)=",summary(mod1)$fstatistic[1]))
+cat(paste("\nEl R**2 de la regresión=",summary(mod1)$r.squared))
+```
+
+#Inciso c)
+
+```{r}
+modifFile <- file %>% subset(V7!=0)
+mod2 <- lm(V7 ~ V10, data=modifFile)
+
+plot(modifFile$V10, modifFile$V7)
+abline(mod2)
+abline(h=0, lty=2)
 
 ```
- 
+
+```{r}
+plot(modifFile$V7, mod2$residuals)
+```
+
+```{r}
+cat(paste("El estimado observado b_0 =",mod2$coefficients[1]))
+cat(paste("\nEl estimado observado b_1 =",mod2$coefficients[2]))
+cat(paste("\nEl estimado observado de sigma (error estándar residual) =",summary(mod2)$sigma))
+cat(paste("\nEl p-value de la regresión (F-statistic)=",summary(mod2)$fstatistic[1]))
+cat(paste("\nEl R**2 de la regresión=",summary(mod2)$r.squared))
+
+```
+```{r}
+1
+```
+
