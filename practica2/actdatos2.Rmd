@@ -23,7 +23,7 @@ Con esto último, hemos demostrado que la $\sigma_{y}$ es proporcional a una con
 
 A continuación, demostraremos que la transformación Box-Cox(como función de $\lambda$) es continua en $\lambda=0$, para esto bastará demostrar que $\lim_{\lambda\to 0}y(\lambda)=y(0)$, esto es quivalente a demostrar que $\lim_{\lambda\to 0}\frac{y^{\lambda}-1}{\lambda(\dot{y})^{\lambda-1}}=\dot{y}\log{y}$. Con lo cual, procedemos a desarrollar aplicando L'Hopital (teniendo en cuenta que se cumplen las condiciones):
 
-$\lim_{\lambda\to 0}\frac{y^{\lambda}-1}{\lambda(\dot{y})^{\lambda-1}}=\lim_{\lambda\to 0}\frac{y^{\lambda}\log{y}}{\lambda(\dot{y})^{\lambda-1}+\lambda(\dot{y})^{\lambda-1}\log{\dot{y}}}=\dot{y}\log{y}$
+$\lim_{\lambda\to 0}\frac{y^{\lambda}-1}{\lambda(\dot{y})^{\lambda-1}}=\lim_{\lambda\to 0}\frac{y^{\lambda}\log{y}}{(\dot{y})^{\lambda-1}+\lambda(\dot{y})^{\lambda-1}\log{\dot{y}}}=\dot{y}\log{y}$
 
 
 
