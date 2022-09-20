@@ -1,0 +1,202 @@
+---
+title: "actdatos"
+date: '2022-09-20'
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(MASS)
+library(tidyverse)
+```
+
+```{r, include=FALSE}
+
+
+datos <- read.table("Control2.dat", header = T)
+datos <- datos[,-1]
+```
+## Ejercicio 1
+
+Definimos la función $h(x)=\frac{1}{\sqrt(x)}$, notemos que $h'(x)=-\frac{1}{2x^{3/2}}$. Ahora con el teorema del método Delta vamos a demostrar que si $\sigma_{y}\propto [\mathbb{E}(y)]^{3}$, la transformación $Y=h(y)$ para la variable $y$ estabiliza la varianza. Con esto solo desarrollamos lo siguiente:
+
+$Var(h(y))\approx (h'(\mu_{y}))^2\sigma^{2}_{y}=[-1/(2(\mu_{y})^{3/2})]^2\sigma^{2}_{y}=\frac{\sigma_{y}^2}{4\mu_{y}^3}\propto \frac{\mu_{y}^{3}}{4\mu_{y}^3}=\frac{1}{4}$
+
+Con esto último, hemos demostrado que la $\sigma_{y}$ es proporcional a una constante, con lo cual se ha estabilizado la varianza.
+
+
+## Ejercicio 2
+
+
+A continuación, demostraremos que la transformación Box-Cox(como función de $\lambda$) es continua en $\lambda=0$, para esto bastará demostrar que $\lim_{\lambda\to 0}y(\lambda)=y(0)$, esto es quivalente a demostrar que $\lim_{\lambda\to 0}\frac{y^{\lambda}-1}{\lambda(\dot{y})^{\lambda-1}}=\dot{y}\log{y}$. Con lo cual, procedemos a desarrollar aplicando L'Hopital (teniendo en cuenta que se cumplen las condiciones):
+
+$\lim_{\lambda\to 0}\frac{y^{\lambda}-1}{\lambda(\dot{y})^{\lambda-1}}=\lim_{\lambda\to 0}\frac{y^{\lambda}\log{y}}{(\dot{y})^{\lambda-1}+\lambda(\dot{y})^{\lambda-1}\log{\dot{y}}}=\dot{y}\log{y}$
+
+Que era lo que buscábamos.
+
+## Ejercicio 3
+
+En este ejercicio nos enfocaremos en encontrar la relación entre el consumo de agua (medido en m3/mes) y electricidad (medido en kw/hr) de una ciudad, tomando en cuenta un estudio que supuso que había alguna relación.
+
+### a) Grafique los datos y comente
+```{r, echo =FALSE, out.width="70%"}
+plot(x = datos$c.elec, y = datos$c.agua, main = "Figura 1. Consumo de electricidad vs consumo de agua", xlab = "Consumo de electricidad", ylab = "Consumo de agua")
+```
+
+Se puede observar en el diagrama de dispersión, de la figura 1, que la relación entre consumo de electricidad y agua es positiva. A simple vista son notables dos datos:  el par (7.8, 21.7) tiene un valor muy alto de consumo de agua para la cantidad de electricidad consumida y el par (6.5, 4.8) tiene un consumo muy bajo de agua para ese nivel de electricidad.
+
+### b) Ajuste un modelo de regresión lineal simple sobre los datos sin transformar
+
+Procedimos a crear un modelo dados los datos que tenemos sin hacer alguna transformación preliminar de los datos:
+```{r, echo = FALSE}
+modelo <- lm(c.elec ~ c.agua, data=datos)
+
+print("Figura 2. Salida del modelo de regresión lineal simple construido en R")
+modelo
+```
+En la figura 2, observamos que nuestro modelo lineal estima una recta con ordenada al origen casi cerca de cero y pendiente cercana a .5, con lo cual nuestra recta ajustada comparada con los datos queda de la siguiente forma: 
+```{r, echo = FALSE, out.width="70%"}
+plot(datos, main = "Figura 3. Consumo de electricidad vs consumo de agua", xlab = "Consumo de electricidad", ylab = "Consumo de agua")
+abline(lm(c.agua ~ c.elec, data=datos))
+
+```
+A simple vista podemos pensar que nuestro modelo se ajusta bien a los datos en general, y específicamente cuando el consumo de electricidad es pequeño. Sin embargo, conforme el consumo es mayor se observa que los datos presentan mayor variabilidad. Con lo observado, podríamos concluir que podrían haber ciertos supuestos que no se estarían cumpliendo, como una variabilidad constante en nuestros datos. 
+
+### c)Verifique su modelo via análisis de residuales. Comente
+```{r echo=FALSE, out.width="70%", paged.print=FALSE}
+
+print("Figura 4. Residuales vs ajustados")
+
+plot(modelo, which = 1)
+```
+
+En la gráfica de residuales se observa una cierta parábola. Esta tendencia podría indicarnos que los residuales no se distribuyen de manera aleatoria, por lo que habría que encontrar alguna transformación de los datos que tal vez nos ayude a normalizar la distribución de los residuales de tal forma que nuestro modelo se ajuste de forma adecuada a los datos y supuestos.
+
+```{r, echo = FALSE}
+print("Figura 5. ")
+print(summary(modelo))
+```
+El valor $R^{2}$ es de 0.7087 y el error de los residuales es de 1.48 con 48 grados de libertad.
+
+### d) Box - Cox con un intervalo de confianza del 90%
+```{r, echo = FALSE}
+
+box_cox <- function(secuencia){
+  lambdas <- seq(from = -2, to = 2, by = secuencia)
+  y <- datos$c.agua
+  x <- datos$c.elec
+  y_puntito <- (prod(y))^{1/length(y)}
+  y_ajustadas <- matrix(,nrow=0,ncol=2)
+  for(lambda in lambdas){
+      if(lambda != 0){
+      y_ajustada <- ((y^lambda)-1)/(lambda*y_puntito^(lambda-1))
+      modelo_ajustado <- lm(y_ajustada~x)
+      SC <- sum(resid(modelo_ajustado)^2)
+      y_ajustadas <- rbind(y_ajustadas,c(lambda,SC))
+    }
+    else{
+      y.ajustada <- y_puntito*log(y)
+      modelo_ajustado <- lm(y.ajustada~x)
+      SC <- sum(resid(modelo_ajustado)^2)
+      y_ajustadas <- rbind(y_ajustadas,c(lambda,SC))
+    }
+  }
+  return(y_ajustadas)
+}
+
+SCres <- data.frame(box_cox(0.05))
+
+#Intervalo
+SC_estrella = min(SCres$X2)*(1+ qt(0.95,48)^2/48)
+intervalo <- filter(SCres, X2<SC_estrella)
+
+
+```
+El intervalo es de -0.55 a 0.25, luego contiene al cero, por lo tanto se escoje ese valor
+
+```{r, echo = FALSE, out.width="70%"}
+plot(SCres$X1, SCres$X2, type = "l", xlab = "Lambda", ylab= "SCres", main = "Figura 4: Lambda que minimiza la suma de cuadrados residuales")
+abline(h = SC_estrella, lty=2)
+segments(intervalo$X1[1], 0, intervalo$X1[1], intervalo$X2[1], lty=2)
+segments(intervalo$X1[length(intervalo$X1)], 0, intervalo$X1[length(intervalo$X1)], intervalo$X2[length(intervalo$X1)], lty=2)
+text(x=0, y=700, "Intervalo de confianza del 90%")
+```
+
+### e) Grafique $y^{\lambda}$
+Usamos lambda = 0
+```{r, echo = FALSE, out.width="70%"}
+y <- datos$c.agua
+x <- datos$c.elec
+y.punto <- (prod(y))^{1/length(y)}
+y.ajustada <- y.punto*log(y)
+plot(x,y.ajustada, ylab = "y ajustada", main = "Figura 5. Modelo ajustado")
+abline(lm(y.ajustada ~ x))
+```
+
+### f) Ajuste el modelo correspondiente y valídelo. Comente.
+```{r, echo = FALSE}
+modelo.ajustado <- lm(y.ajustada ~ x)
+modelo.ajustado
+```
+```{r, echo = FALSE, out.width="70%"}
+residuales <- resid(modelo.ajustado)
+plot(fitted(modelo.ajustado), residuales, main = "Figura 6. Residuales del modelo ajustado")
+abline(0,0)
+summary(modelo.ajustado)
+```
+
+
+### g) Intervalo al 90% para el consumo medio de agua esperado si el consumo de energía eléctrica es de 7.57 kw/hr
+
+Como el modelo predice log(y), para obtener y(x) hacemos exp{12.130+1.215*x}
+
+```{r, echo = FALSE}
+
+new_data <- data.frame(x=c(7.57))
+y.pred <- predict(modelo.ajustado,new_data)
+
+
+```
+
+El intervalo es y.pred +- t(.95,48)*S*sqrt(1/n + (x0-x.barra)^2/Sxx)
+
+```{r, echo = FALSE}
+t.value <- qt(.95,48)
+S <-sqrt( (1/48)*sum((y.ajustada-predict(modelo.ajustado,datos))^2) )
+X.barra <- mean(x)
+Sxx <- sum((x-X.barra)^2)
+
+LI <- y.pred - t.value*S*sqrt((1/50)+((7.57-X.barra)^2/Sxx))
+LS <- y.pred + t.value*S*sqrt((1/50)+((7.57-X.barra)^2/Sxx))
+
+print(paste0("El intervalo (sin regresar) para el consumo medio de agua esperado si el consumo de energía es 7.57 kw/hr es: (",round(LI,4),",",round(LS,4),")"))
+print(paste0("El intervalo (regrresado) para el consumo medio de agua esperado si el consumo de energía es 7.57 kw/hr es: (",round(exp(LI),4),",",round(exp(LS),4),")"))
+
+```
+
+### h) Intervalo de prediccción al 95% si el consumo de energia es de 5.1 kw/hr
+```{r, echo = FALSE}
+
+new_data <- data.frame(x=c(5.1))
+y.pred <- predict(modelo.ajustado,new_data)
+```
+
+El intervalo es y.pred +- t(.975,48)*S*sqrt(1+1/n + (x0-x.barra)^2/Sxx)
+```{r, echo = FALSE}
+t.value <- qt(.975,48)
+S <-sqrt( (1/48)*sum((y.ajustada-predict(modelo.ajustado,datos))^2) )
+X.barra <- mean(x)
+Sxx <- sum((x-X.barra)^2)
+
+LI <- y.pred - t.value*S*sqrt(1+(1/50)+((5.1-X.barra)^2/Sxx))
+LS <- y.pred + t.value*S*sqrt(1+(1/50)+((5.1-X.barra)^2/Sxx))
+
+print(paste0("El intervalo de predicción si el consumo de energÃ­a es 5.1 kw/hr es: (",round(LI,4),",",round(LS,4),")"))
+print(paste0("El intervalo de predicción (regresado) si el consumo de energÃ­a es 5.1 kw/hr es: (",round(exp(LI),4),",",round(exp(LS),4),")"))
+```
+
