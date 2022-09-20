@@ -1,7 +1,9 @@
 ---
-title: "actdatos"
+title: "Actdatos"
 date: '2022-09-20'
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -50,7 +52,7 @@ En este ejercicio nos enfocaremos en encontrar la relación entre el consumo de 
 plot(x = datos$c.elec, y = datos$c.agua, main = "Figura 1. Consumo de electricidad vs consumo de agua", xlab = "Consumo de electricidad", ylab = "Consumo de agua")
 ```
 
-Se puede observar en la figura 1 que la relación entre consumo de electricidad y agua es positiva. A simple vista son notables dos datos:  el par (7.8, 21.7) tiene un valor muy alto de consumo de agua para la cantidad de electricidad consumida y el par (6.5, 4.8) tiene un consumo muy bajo de agua para ese nivel de electricidad. Más aún, a medida que el consumo de electricidad aumenta, el consumo de agua se dispera más, lo que nos indica que quizá la varianza no es constante, si no que aumenta a medida que aumenta el consumo de electrcidad. 
+Se puede observar en la figura 1 que la relación entre consumo de electricidad y agua es positiva. A simple vista son notables dos datos:  el par (7.8, 21.7) tiene un valor muy alto de consumo de agua para la cantidad de electricidad consumida y el par (6.5, 4.8) tiene un consumo muy bajo de agua para ese nivel de electricidad. Más aún, a medida que el consumo de electricidad aumenta, el consumo de agua se dispersa más, lo que nos indica que quizá la varianza no es constante, si no que aumenta a medida que aumenta el consumo de electrcidad. 
 
 ### b) Ajuste un modelo de regresión lineal simple sobre los datos sin transformar
 
@@ -71,7 +73,7 @@ abline(lm(c.agua ~ c.elec, data=datos))
 
 ```
 
-A simple vista podemos pensar que nuestro modelo se ajusta bien a los datos en general, en particular cuando el consumo de electricidad es pequeño. Sin embargo, conforme el consumo de electricidad es mayor, se observa que los datos presentan mayor variabilidad. Con lo observado, podríamos concluir que podrían haber ciertos supuestos que no se estarían cumpliendo, como una variabilidad constante en nuestros datos. 
+A simple vista, en la figura 3, podemos pensar que nuestro modelo se ajusta bien a los datos en general, en particular cuando el consumo de electricidad es pequeño. Sin embargo, conforme el consumo de electricidad es mayor, se observa que los datos presentan mayor variabilidad. Con lo observado, podríamos concluir que podrían haber ciertos supuestos que no se estarían cumpliendo, como una variabilidad constante en nuestros datos. 
 
 ### c)Verifique su modelo via análisis de residuales. Comente
 
@@ -79,13 +81,13 @@ A simple vista podemos pensar que nuestro modelo se ajusta bien a los datos en g
 plot(modelo, which = 1, main = "Figura 4. Residuales vs ajustados",caption="")
 ```
 
-En la gráfica de residuales observamos lo siguiente: en la figura 4 se observa que la dispersión para los datos es mayor para valores grandes de la respuesta ajustada (lo que indica varianza no constante); dado que los datos estaban ordenados, es claro que a mayor respuesta ajustada (y posición del residual) mayor varianza.  Estas tendencias podría indicarnos que los residuales no se distribuyen de manera aleatoria o que no tienen varianza constante, por lo que habría que encontrar alguna transformación de los datos que nos ayude a normalizar la varianza y distribución de los residuales de tal forma que nuestro modelo se ajuste de forma adecuada a los datos y supuestos.
+En la gráfica de residuales (de la figura 4) observamos lo siguiente:  se observa que la dispersión para los datos es mayor para valores grandes de la respuesta ajustada (lo que indica varianza no constante); dado que los datos estaban ordenados, es claro que a mayor respuesta ajustada (y posición del residual) mayor varianza.  Estas tendencias podría indicarnos que los residuales no se distribuyen de manera aleatoria o que no tienen varianza constante, por lo que habría que encontrar alguna transformación de los datos que nos ayude a normalizar la varianza y distribución de los residuales de tal forma que nuestro modelo se ajuste de forma adecuada a los datos y supuestos.
 
 **Figura 5. Resumen del modelo**
 ```{r, echo = FALSE,fig.align="center"}
 print(summary(modelo))
 ```
-El valor $R^{2}$ es de 0.7087 y el error de los residuales es de 2.46 con 48 grados de libertad. Tanto la ordenada como el regresor (consumo de electricidad) son siginificativos para esete modelo.  
+Según los estadístidos mostrados en la figura 5, el valor $R^{2}$ es de 0.7087, es decir, nuestro modelo logra explicar moderadamente la variabilidad del modelo. También, el error de los residuales es de 2.46 con 48 grados de libertad. Tanto los valores estimados de la ordenada como el regresor (consumo de electricidad) son significativos para este modelo, con lo cual tenemos seguridad de que al menos son distintos de cero.  
 
 ### d) Box - Cox con un intervalo de confianza del 90%
 ```{r, echo = FALSE,fig.align="center"}
@@ -122,7 +124,7 @@ intervalo <- filter(SCres, X2<SC_estrella)
 
 ```
 
-La lambda que minizmia la suma de cuadrados de los residuales es -0.15. Luego, el intervalo de confianza contiene a todas las lambdas para las cuales al suma de cuadrados de los residuales es menor a 200. Obtenemos el siguiente intervalo (para la partición utilzada, de -2 a 2 en saltos de 0.05): $\lambda \in [-0.55,0.25]$   Este intervalo contiene al cero, por lo tanto utilizamos ese valor para transformar la respuesta; esto es, $Y  = \log(y)$
+El valor de $\lambda$ que minimiza la suma de cuadrados de los residuales es -0.15. Luego, el intervalo de confianza contiene a todas las lambdas para las cuales la suma de cuadrados de los residuales es menor a 200, como se observa en la figura 6. Obtenemos el siguiente intervalo (para la partición utilzada, de -2 a 2 en saltos de 0.05): $\lambda \in [-0.55,0.25]$   Este intervalo contiene al cero, por lo tanto utilizamos ese valor para transformar la respuesta; esto es, $Y  = \log(y)$
 
 ```{r, echo = FALSE, out.width="70%",fig.align="center"}
 plot(SCres$X1, SCres$X2, type = "l", xlab = "Lambda", ylab= "SCres", main = "Figura 6: Lambda que minimiza la suma de cuadrados residuales")
@@ -132,32 +134,36 @@ segments(intervalo$X1[length(intervalo$X1)], 0, intervalo$X1[length(intervalo$X1
 text(x=0, y=700, "Intervalo de confianza del 90%")
 ```
 
-### e) Grafique $y^{\lambda}$
-Usamos $\lambda$ = 0, luego $Y = y^{(\lambda)}=log(y)$
+### e) Grafique $y^{(\lambda)} vs x$
+Usamos $\lambda$ = 0, luego $Y = y^{(\lambda)}=log(y)$, y procedimos a construir el nuevo diagrama de dispersión con su respectivo modelo ajustado para los datos transformados en la figura 7.
 ```{r, echo = FALSE, out.width="70%",fig.align="center"}
 y <- datos$c.agua
 x <- datos$c.elec
 
 y.ajustada <- log(y)
-plot(x,y.ajustada, ylab = "log(Consumo Electricidad)",xlab="Consumo de agua", main = "Figura 7. Modelo transformado $y^{lambda} vs x",sub = "log(Consumo Electricidad) ~ Consumo Agua")
+plot(x,y.ajustada, ylab = "log(Consumo de agua)",xlab="Consumo Electricidad", main = "Figura 7. Modelo transformado $y^{lambda}$ vs x",sub = "log(Consumo de agua) ~ Consumo Electricidad")
 abline(lm(y.ajustada ~ x))
 ```
 
 ### f) Ajuste el modelo correspondiente y valídelo. Comente.
+
+**Figura 8. Estimados del modelo**
 ```{r, echo = FALSE,fig.align="center"}
 modelo.ajustado <- lm(y.ajustada ~ x)
 modelo.ajustado
 ```
 
-El modelo ajustado predice $\log(y)$, por lo que para obtener $y(x)$ tendríamos la siguiente ecuación: $y = e^{1.4195+0.1422x}$
+En la figura 8, se observa que nuestro modelo estima una ordenada al origen igual a 1.4195, y una pendiente de .1422. Ahora, notemos que el modelo ajustado predice $\log(y)$, por lo que para obtener $y(x)$ tendríamos la siguiente ecuación: $y = e^{1.4195+0.1422x}$. 
+
+Después, procedimos a analizar los residuales con respectos a los valores ajustados:
 ```{r figures-side2,fig.align="center",echo=FALSE, out.width="70%", paged.print=FALSE}
-plot(modelo.ajustado, which = 1, main = "Figura 8. Residuales ajustados",caption="")
+plot(modelo.ajustado, which = 1, main = "Figura 9. Residuales ajustados",caption="")
 
 ```
 
-Los residuales del modelo ajustado se comportan de manera aleatoria, pues ya no se ve una tendencia tan definida como se veía en el modelo sin transformar Además, la varianza es mucho más constante. Aunque la varianza aún es menor en los extremos, esto es mucho menos marcado que en el modelo original. Esto nos indica que con la transformación se cumplen mejor los supuestos, y por lo tanto podemos ajustar el modelo de regersión lineal de mejor manera. 
+Observamos en la figura 9 que los residuales del modelo ajustado se comportan de manera aleatoria, pues ya no se ve una tendencia tan definida como se veía en el modelo sin transformar Además, la varianza es mucho más constante. Aunque la varianza aún es menor en los extremos, esto es mucho menos marcado que en el modelo original. Esto nos indica que con la transformación se cumplen mejor los supuestos, y por lo tanto podemos ajustar el modelo de regersión lineal de mejor manera. 
 
-**Figura 9. Resumen modelo ajustado**
+**Figura 10. Resumen modelo ajustado**
 ```{r, echo = FALSE,fig.align="center"}
 summary(modelo.ajustado)
 ```
@@ -165,7 +171,7 @@ La $r^{2}$ aumentó de 0.70 en el modelo sin transformar a 0.76 en el modelo tra
 
 ### g) Intervalo al 90% para el consumo medio de agua esperado si el consumo de energía eléctrica es de 7.57 kw/hr
 
-Como el modelo predice log(y), obtenemos el intervalo de confianza para los valores transformados, y a continuación exponenciamos los límites del intervalo para obtener el intervalo de la varaible sin transformar
+Como el modelo predice log(y), obtendremos el intervalo de confianza para los valores transformados, y a continuación exponenciamos los límites del intervalo para obtener el intervalo de la variable sin transformar.
 
 ```{r, echo = FALSE}
 
@@ -190,7 +196,7 @@ LS <- y.pred + t.value*S*sqrt((1/50)+((7.57-X.barra)^2/Sxx))
 #print(paste0("El intervalo (en valores originales) para el consumo medio de agua esperado \n  si el consumo de energía es 7.57 kw/hr es: (",round(exp(LI),4),",",round(exp(LS),4),")"))
 
 ```
-Obtenemos un intervalo transformado de $\hat{Y}(7.57)=\log(\hat{y}(7.57))\in(2.4234,2.5688)$; si exponenciamos los límites, obtenemos las unidades originales de la respuesta, y obtenemos el intervalo $\hat{y}(7.57)\in(11.2841,13.0504)$
+Obtenemos un intervalo transformado de $\hat{Y}(7.57)=\log(\hat{y}(7.57))\in(2.4234,2.5688)$; si exponenciamos los límites, obtenemos las unidades originales de la respuesta, y obtenemos el intervalo $\hat{y}(7.57)\in(11.2841,13.0504)$ con confianza al 90% para el consumo medio de agua esperado si el consumo de energía eléctrica es de 7.57 kw/hr
 
 
 ### h) Intervalo de prediccción al 95% si el consumo de energia es de 5.1 kw/hr
@@ -200,7 +206,7 @@ new_data <- data.frame(x=c(5.1))
 y.pred <- predict(modelo.ajustado,new_data)
 ```
 
-El intervalo ahora es: $$y_{predict} \pm t(.975,48)^{*}S^{*}\sqrt{1+\frac{1}{n} + \frac{(x_0-\bar{x})^2}{S_{xx}}}$$
+El intervalo teórico ahora es: $$y_{predict} \pm t(.975,48)^{*}S^{*}\sqrt{1+\frac{1}{n} + \frac{(x_0-\bar{x})^2}{S_{xx}}}$$
 ```{r, echo = FALSE}
 t.value <- qt(.975,48)
 S <-sqrt( (1/48)*sum((y.ajustada-predict(modelo.ajustado,datos))^2) )
@@ -213,4 +219,4 @@ LS <- y.pred + t.value*S*sqrt(1+(1/50)+((5.1-X.barra)^2/Sxx))
 #print(paste0("El intervalo de predicción si el consumo de energía es 5.1 kw/hr es: (",round(LI,4),",",round(LS,4),")"))
 #print(paste0("El intervalo de predicción (regresado) si el consumo de energía es 5.1 kw/hr es: (",round(exp(LI),4),",",round(exp(LS),4),")"))
 ```
-Obtenemos un intervalo transformado de $\dot{Y}(7.57)=\log(\dot{y}(7.57))\in(1.6716,2.6181)$; si exponenciamos los límites, obtenemos las unidades originales de la respuesta, y obtenemos el intervalo $\dot{y}(7.57)\in(5.3207,13.709)$
+Obtenemos un intervalo transformado de $\dot{Y}(7.57)=\log(\dot{y}(7.57))\in(1.6716,2.6181)$; si exponenciamos los límites, obtenemos las unidades originales de la respuesta, y obtenemos el intervalo de predicción $\dot{y}(7.57)\in(5.3207,13.709)$ con una confianza al 95% si el consumo de energia es de 5.1 kw/hr.
