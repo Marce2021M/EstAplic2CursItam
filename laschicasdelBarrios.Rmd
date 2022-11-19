@@ -1,0 +1,272 @@
+---
+title: "LaschicasdelBarrios"
+output: html_document
+date: '2022-11-18'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Proyecto final
+
+## 1.-. Resuma muy brevemente el art´ıculo. (Secci´on 2.)
+
+## 2.-Describa la variable respuesta y los regresores considerados. El precio del veh´ıculo
+expr´eselo en miles de d´olares equivalentes a 2013 y el gasto de combustible en kil´ometros por litro. Indique los niveles de los factores o variable cualitativas. (Secci´on 3.)}
+
+
+En este proyecto tenemos como objetivo encontrar el mejor modelo de regresión lineal que describa el precio de los vehículos híbridos como función de unas variables que fueron tomadas de la base de datos que utilizó el artículo: "Comparing technological advancement of hybrid electric
+vehicles (HEV) in different market segments" de la revista "Technological Forecasting & Social Change". Las variables de la base de datos que fueron consideradas como regresores para el modelo de regresión lineal están contenidos en la sigUiente tabla: (convertirla a latex)
+
+VARIABLE/DESCRIPCIÓN/TIPO/UNIDADES/NIVELES(MÁX-MÍN)
+
+-msrp/Precio de los vehículos híbridos/Cuantitativa de carácter continuo/ dólares equivalentes a 2013/El mínimo nivel es 11849 y el máximo es 118544
+
+-accelrate/Tasa de aceleración del vehículo/Cuantitativa de carácter continuo/medida en km/h/s/El mínimo nivel es 6.29 y el máximo es 20.41
+
+-year/Año del vehículo/Cuantitativa de carácter discreto/medida en años/El mínimo nivel es 1997 y el máximo nivel es 2013
+
+
+-mpg/Consumo de combustible/Cuantitativa de carácter continuo/medida en km por litro/El mínimo nivel es 17 y el máximo es 72.92
+
+-mpgmpge/Máximo de consumo de combustible/Cuantitativa de carácter continuo/medida en km por litro/El mínimo nivel es 17 y el máximo es 100
+
+-carclass_id/Clase de vehículo/Cualitativa compuesta por caracteres//Los niveles son 1,2,3,4,5,6,7.
+
+-vehicle/Modelos de vehículos/Cualitativa compuesta por caracteres//Los niveles son 
+[1] "Kluger"                "Panamera S"            "RX 450h"               "Altima"               
+  [5] "Lexus GS450h"          "Insight"               "Camry LXLE"            "ActiveHybrid X6"      
+  [9] "3008"                  "Civic"                 "Cayenne S"             "Aqua"                 
+ [13] "Mercury Milan"         "Sonata"                "ActiveHybrid 5"        "Besturn B50  "        
+ [17] "Prius"                 "Lexus RX450h"          "Yukon 1500"            "Silverado 15 2WD"     
+ [21] "Aura"                  "Q5"                    "Fusion FWD"            "Jetta"                
+ [25] "S400"                  "Lexus LS600h/hL"       "Prius (2nd Gen)"       "Ampera"               
+ [29] "Prius Plug-in"         "GS 450h"               "Prius (3rd Gen)"       "ILX"                  
+ [33] "Sierra 15 2WD"         "Buick Regal"           "Escape 2WD"            "Prius alpha (V)"      
+ [37] "CR-Z"                  "Malibu"                "Aspen HEV"             "Tribute 2WD"          
+ [41] "LaCrosse"              "E400"                  "Escalade 2WD"          "Lexus HS250h"         
+ [45] "Audi Q5"               "Tribute"               "Chevrolet Tahoe"       "ActiveHybrid 3"       
+ [49] "Touareg"               "Lincoln MKZ"           "ActiveHybrid 7i"       "Highlander 4WD"       
+ [53] "Civic (2nd Gen)"       "Camry"                 "Prius (1st Gen)"       "ActiveHybrid 7"       
+ [57] "C-Max Energi Plug-in"  "F3DM PHEV"             "MKZ FWD"               "Lexus RX400h"         
+ [61] "Fusion Energi Plug-in" "Civic (1st Gen)"       "Highlander"            "Prius C"              
+ [65] "S400 Long"             "Optima EX"             "Freed/Freed Spike"     "Tahoe 2WD"            
+ [69] "Escape FWD"            "Chevrolet Volt"        "Camry LE"              "ML450 4natic"         
+ [73] "F3DM"                  "HS 250h"               "Auris HSD"             "Fit/Jazz"             
+ [77] "ML450 Blue HV"         "Prius PHV"             "Estima"                "Fuga Infiniti M35H"   
+ [81] "Optima"                "Mercury Mariner"       "Fit Shuttle"           "Durango"              
+ [85] "Vue"                   "Lexus CT200h"          "Mariner FWD"           "Civic (3rd Gen)"      
+ [89] "Tribute 4WD"           "M35h"                  "Sonata Limited"        "Cadillac Escalade"    
+ [93] "Escape"                "Accord"                "A5 BSG"                "Crown"                
+ [97] "ES 300h"               "SAI"                   "Tino"                  "GMC Yukon"            
+[101] "Jeep Patriot"          "ActiveHybrid 7L"       "Optima K5"             "Avante/Elantra LPI"
+
+
+## Realice un an´alisis exploratorio de los datos y reporte lo que considere relevante.(Secci´on
+3.)
+
+```{r}
+#CARGAMOS LIBRERÍAS
+library(tidyverse)
+library(ggplot2)
+
+library(wordcloud)
+library(wordcloud2)
+library(tm)
+library(forcats)
+library(GGally)
+library(outliers)
+library(ggcorrplot)
+
+file <- read.csv("datosFit.csv")
+
+```
+
+
+```{r}
+glimpse(file)
+summary(file)
+
+file$carclass<-as.factor(file$carclass)
+```
+### Búsqueda de NA´s
+
+```{r paged.print=FALSE}
+# Búsqueda de NA en la base de datos
+
+numNA<-sum(is.na(file))
+
+cat(paste("Hay ",numNA,"NA de la forma usual "))
+cat(paste("\n"))
+
+file[which(file == "<NA>",arr.ind = TRUE)[,1],]
+```
+
+
+### ¿Hay relación biyectiva entre ccarclass y carid?
+
+```{r}
+cat(paste("Hay ",length(unique(file$carclass)),"clases de vehículos"))
+cat(paste("\nHay ",length(unique(file$carid)),"claves de clases de vehículos"))
+```
+Con lo cual no hay relación, y cada id es distinto para cada renglón. Por lo que no consideraremos la columna de carid para nuestro análisis
+
+
+### ¿Hay relación biyectiva entre mpg y mpgmpge?
+
+```{r}
+cat(paste("Hay ",length(unique(file$mpg)),"registros de mpg"))
+cat(paste("\nHay ",length(unique(file$mpgmpge)),"registros de mpgmpge"))
+```
+```{r}
+#procedemos a buscar el porqué
+
+file[which(file$mpg!=file$mpgmpge),]
+```
+
+INVESTIGAR EL PORQUÉ TEÓRICAMENTE ES POSIBLE
+
+
+### ¿Hay relación biyectiva entre ccarclass y carclass_id?
+
+```{r}
+cat(paste("Hay ",length(unique(file$carclass)),"clases de vehículos"))
+cat(paste("\nHay ",length(unique(file$carclass_id)),"claves de clases de vehículos"))
+```
+Por las características de las variables tenemos que en realidad representan las mismas características para los registros, solo que uno es numérico y otro es por caracter. Por lo tanto, no consideraremos carclass.
+
+VERIFICAR SI REALMENTE ES ESA RELACIÓN
+
+### Análisis exploratorio por univariado
+
+#### a) Año
+
+```{r}
+hist(file$year,main="Distribución de los años de vehículos",
+     xlab = "Años de vehículos",ylab="Frecuencia",breaks=20)
+abline(v = mean(file$year),col="blue")
+abline(v=median(file$year),col="red",lty=2)
+boxplot(file$year,add = T,horizontal = T,width = 4,col="pink",at = 5)
+#legend(2013,2009,legend=c("Mediana", "Media"),
+#
+
+```
+
+#### b) msrp
+
+```{r}
+hist(file$msrp,main="Distribución del precio de los vehículos híbridos",
+     xlab = "Precio de vehículos",ylab="Frecuencia",breaks=20)
+abline(v = mean(file$msrp),col="blue")
+abline(v=median(file$msrp),col="red",lty=2)
+boxplot(file$msrp,add = T,horizontal = T,width = 4,col="pink",at = 5)
+#legend(2013,2009,legend=c("Mediana", "Media"),
+#
+
+```
+
+#### c) accelrate
+
+```{r}
+hist(file$accelrate,main="Distribución de la tasa de aceleración",
+     xlab = "Tasa de aceleración",ylab="Frecuencia",breaks=20)
+abline(v = mean(file$accelrate),col="blue")
+abline(v=median(file$accelrate),col="red",lty=2)
+boxplot(file$accelrate,add = T,horizontal = T,width = 4,col="pink",at = 5)
+#legend(2013,2009,legend=c("Mediana", "Media"),
+#
+
+qqnorm(file$msrp, main = "Tasa de aceleración" )
+```
+
+#### d) mpg
+
+```{r}
+hist(file$mpg,main="Distribución del consumo de combustible",
+     xlab = "Consumo de combustible",ylab="Frecuencia",breaks=20)
+abline(v = mean(file$mpg),col="blue")
+abline(v=median(file$mpg),col="red",lty=2)
+boxplot(file$mpg,add = T,horizontal = T,width = 4,col="pink",at = 5)
+#legend(2013,2009,legend=c("Mediana", "Media"),
+#
+
+qqnorm(file$mpg, main = "Consumo de combustible" )
+
+```
+
+#### e) máximo consumo de combustible
+
+```{r}
+hist(file$mpgmpge,main="Distribución del máximo consumo de combustible",
+     xlab = "Máximo consumo de combustible",ylab="Frecuencia",breaks=20)
+abline(v = mean(file$mpgmpge),col="blue")
+abline(v=median(file$mpgmpge),col="red",lty=2)
+boxplot(file$mpg,add = T,horizontal = T,width = 4,col="pink",at = 5)
+#legend(2013,2009,legend=c("Mediana", "Media"),
+#
+
+qqnorm(file$mpgmpge, main = "Máximo consumo de combustible" )
+
+```
+
+#### f) carclass CHECAR
+
+```{r}
+hist(file$carclass,main="Distribución del m",
+     xlab = "Máximo consumo de combustible",ylab="Frecuencia",breaks=20)
+
+
+qqnorm(file$carclass, main = "Máximo consumo de combustible" )
+
+```
+
+
+### Análisis bivariado ARREGLAR
+
+```{r}
+pairs <- file %>% select(-c(carclass_id,carid,vehicle)) %>% ggpairs(progress = F,mapping=ggplot2::aes(colour =carclass,alpha=0.8))
+
+pairs
+```
+
+
+
+
+
+
+
+
+### Regresión lineal
+
+
+....
+
+
+
+```{r}
+mod1<- lm(msrp~mpg+accelrate+msrp+year+carclass,data = file)
+
+summary(mod1)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
