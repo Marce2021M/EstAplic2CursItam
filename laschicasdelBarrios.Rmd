@@ -79,6 +79,8 @@ library(GGally)
 library(outliers)
 library(ggcorrplot)
 
+library(car)
+
 file <- read.csv("datosFit.csv")
 
 ```
@@ -210,29 +212,54 @@ qqnorm(file$mpgmpge, main = "Máximo consumo de combustible" )
 
 ```
 
-#### f) carclass CHECAR
+#### f) carclass
 
 ```{r}
-hist(file$carclass,main="Distribución del m",
-     xlab = "Máximo consumo de combustible",ylab="Frecuencia",breaks=20)
-
-
-qqnorm(file$carclass, main = "Máximo consumo de combustible" )
+ggplot(data = file) +
+  geom_bar(mapping = aes(x = carclass), fill="steelblue", color="black")+
+  ggtitle("Cantidad de vehículos por clase")
 
 ```
 
-
-### Análisis bivariado ARREGLAR
+#### g)Modelos de vehículos
 
 ```{r}
-pairs <- file %>% select(-c(carclass_id,carid,vehicle)) %>% ggpairs(progress = F,mapping=ggplot2::aes(colour =carclass,alpha=0.8))
+modelos <- Corpus(VectorSource(file$vehicle))
+dtm <- TermDocumentMatrix(modelos)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+
+wordcloud::wordcloud(words=d$word,freq = d$freq,min.freq = 1,scale=c(.75,.8),colors = brewer.pal(4, "Dark2"),random.order=FALSE, rot.per=0.2,random.color=T)
+```
+
+
+
+### Análisis bivariado
+
+```{r}
+pairs <- file %>% select(-c(carclass_id,carid,vehicle)) %>% ggpairs(progress = F, proportions = "auto" , size=.01,columns = c("year","accelrate", "mpg", "mpgmpge","msrp","carclass") )
 
 pairs
 ```
 
+#### Explicando msrp a través de carclass
 
+```{r}
+ggplot(data = file)+
+  geom_boxplot(aes(x=carclass, y=msrp))
+```
+ 
+#### Explicando msrp a través de accelrate
 
+```{r}
+plot(x=file$accelrate, y=file$msrp, xlab = "Tasa de aceleración",ylab = "Precio")
+```
+#### Explicando msrp a través de consumo de combustible
 
+```{r}
+plot(x=file$mpg, y=file$msrp, xlab = "Consumo de combustible",ylab = "Precio")
+```
 
 
 
@@ -242,17 +269,54 @@ pairs
 
 ....
 
-
+#### Sin incluir nombres de vehículos
 
 ```{r}
-mod1<- lm(msrp~mpg+accelrate+msrp+year+carclass,data = file)
+mod1<- lm(msrp~accelrate+mpg+year+carclass+mpgmpge,data = file)
 
 summary(mod1)
 ```
 
+```{r}
+vif(mod1)
+
+ka<- mod1$
 
 
+```
+```{r}
+scaleEigen <- function(fit){
+ # Calculate the eigenvalues and eigenvectors
+ #
+ # args: fit - an object of the lm or glm class from which you would
+ #             like to extract the X matrix
+ #
+ # Output: eigenvalues and eigenvectors of the X'X matrix
+ #
+ # Method:
+ #         fit <- lm(y ~ x1 + x2 + x3, data = dataset)
+ #         summary(fit)
+ #         scaledEigen(fit)
+ #
+ model.data <- fit$model  # The data used in the regression
+ Xvec <- as.matrix(cbind(1, model.data[,-1]))  # X matrix including intercept
+ Xvec <- apply(Xvec, 2 , function(x) x/sqrt(sum(x^2)))  # Rescale the X matrix
+ eigenValues <- eigen(t(Xvec)%*%Xvec)
+ return(eigenValues)
+}
 
+scaleEigen(mod1)
+
+```
+
+
+```{r}
+plot(mod1)
+```
+
+```{r}
+
+```
 
 
 
