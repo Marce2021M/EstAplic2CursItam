@@ -1,0 +1,293 @@
+---
+title: "Tarea4"
+output: pdf_document
+latex_engine: xelatex
+date: "2022-11-22"
+header-includes:
+    - \usepackage[labelformat=empty]{caption}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+variables <- read.csv("variablesT4.csv")
+datos <- read.csv("datosFit.csv")
+
+library(kableExtra)
+library(tidyverse)
+library(ggcorrplot)
+
+
+
+model_results <- read_csv("model_results.csv")
+colnames(model_results) <- c("ID","q","R_adj","RMPRESS")
+ap <- read_csv("ap.csv")
+datos <- read_csv("datosFit.csv")
+datos$mpg_rec <- 1/datos$mpg
+datos$carclass_id <- factor(datos$carclass_id)
+
+
+#Transformación a variables requeridas
+
+datos$msrp<-datos$msrp/1000
+datos$mpg<-datos$mpg*0.35400603
+datos$mpgmpge<-datos$mpgmpge*0.35400603
+```
+
+
+## 1. Resuma muy brevemente el artículo
+
+
+
+Los avances tecnológicos, los costos de combustibles y las regulaciones gubernamentales han hecho que el mercado de vehículos híbridos aumente y se mantenga dinámico, pues no ha habido un único tipo de vehículo que conserve una superioridad tecnológica y de demanda. Es por ello que el artículo evalúa y compara el avance tecnológico observado en diferentes segmentos del mercado durante los últimos 15 años. Se busca combinar los patrones de desarrollo en los distintos atributos de los coches para describir la demanda de los sistemas tecnológicos.
+
+El modelo desarrollado esboza qué segmento de mercado ha dominado cada año en términos de superioridad tecnológica. Asimismo, se identificó que las tasas de cambio en los segmentos de mercado sirven para brindar información acerca de la estimación de niveles de rendimiento futuro. Esto puede servir para predecir y establecer  objetivos en el desarrollo de nuevos productos.
+
+
+## 2. Describa la variable respuesta y los regresores considerados. El precio del vehículo. Expréselo en miles de dólares equivalentes a 2013 y el gasto de combustible en kilómetros por litro. Indique los niveles de los factores o variable cualitativas.
+
+En este proyecto tenemos como objetivo encontrar el mejor modelo de regresión lineal que describa el precio de los vehículos híbridos como función de unas variables que fueron tomadas de la base de datos que utilizó el artículo: "Comparing technological advancement of hybrid electric vehicles (HEV) in different market segments" de la revista "Technological Forecasting & Social Change". Las variables de la base de datos que fueron consideradas como regresores para el modelo de regresión lineal están contenidos en la siguiente tabla: 
+
+```{r, echo = F}
+names(variables)[2] ="Descripción"
+
+kbl(variables, booktabs = T, caption = "Tabla 1. Descripción variables")%>%
+  kable_styling(latex_options = c("scale_down", "hold_position"))
+
+
+```
+
+
+## 3. Realice un análisis exploratorio de los datos y reporte lo que considere relevante.
+
+Se analizaron las 9 variables en la tabla. La primera variable "carid" tiene 140 claves de clases de vehículos y 140 datos por lo que no se considera esta variable para el análisis, mismo caso para la segunda variable "nombre del vehículo". Las últimas dos variables "carclass" y "carclass_id" son cualitativas y son iguales por lo que únicamente se utilizó una de ellas. Para las demás variables se comienza con un análisis de la correlación.
+
+```{r, echo = F, out.width="60%"}
+corr <- datos %>% select(-c(carid,vehicle,carclass_id, carclass))
+corr<-round(cor(corr), 1)
+ggcorrplot(corr, hc.order = TRUE, type = "lower",
+   outline.col = "white",
+   ggtheme = ggplot2::theme_gray,
+   colors = c("#6D9EC1", "white", "#E46726"),
+   title = "Gráfica 1. Correlación entre variables",
+   lab = TRUE)
+```
+
+La gráfica 1 nos muestra la matriz de correlación. El precio muestra una mayor correlación con la aceleración y una menor correlación con el año. Asimismo, la correlación entre el consumo de combustible y el precio es de -0.5, mientras que la correlación entre el consumo máximo de combustible y el precio es de -0.4. ¿Habrá algún parecido en los datos?
+
+Los datos que difieren en valor para ambas variables son los siguientes:
+
+```{r, echo = F}
+kbl(datos %>% filter(datos$mpg != datos$mpgmpge), booktabs = T, caption = "Tabla 2. Datos que difieren en valor para ambas variables") %>%
+  kable_styling(latex_options = c("hold_position"))
+```
+
+En estos nueve casos el consumo de combustible y el consumo máximo de combustible no son iguales pues los coches son eléctricos y no híbridos, por lo que tienen mayor rendimiento máximo. Sin embargo, al tener 136 de 140 datos iguales las variables están correlacionadas y de incluirse ambas en el modelo se agregarían problemas de autocorrelación.
+
+La siguiente variable estudiada es el año, donde se analizó cómo cambia el precio promedio por año.
+
+```{r flowchart-data, echo = F, out.width= "60%"}
+datos %>% group_by(year) %>% summarise(Msrp = mean(msrp)) %>%
+  ggplot(., aes(x = year, y = Msrp))+ geom_line(color = "blue", ) +
+  labs(x = "Año", y = "Promedio precio", title = "Gráfica 2. Precio promedio por año")+
+  theme_classic()
+```
+
+Aunque el precio muestra una tendencia a la alza entre 2003 y 2008, esta no se mantiene. Es por ello que en la gráfica 1 la correlación fue baja. Posteriormente se verá que el año no se debe incluir en el modelo, pues este no explica el precio. 
+
+Una hipótesis, dada la correlación, es que la aceleración es la variable que más explica el precio. Por ello graficamos precio vs aceleración.
+
+```{r, echo = F,out.width="60%"}
+ggplot(datos, aes(accelrate, msrp))+ 
+  geom_point()+
+  labs(y = "Precio", x = "Tasa de aceleración del vehículo", title = "Gráfica 6. Precio del vehículo dependiendo de su aceleración")+
+  theme_classic()
+```
+
+Efectivamente a mayor precio hay una mayor aceleración. A simple vista se puede ver una tendencia lineal y no se ve algún dato fuera de lo normal o que pueda meter ruido.
+
+Si hacemos la misma gráfica para el consumo de combustible encontramos que este no se ve lineal. Por lo anterior, le ajustamos la función $\frac{1}{mpg}$.
+
+```{r, echo = F, out.width="60%"}
+ggplot(datos, aes( mpg, msrp))+ 
+  geom_point()+
+  labs(y = "Precio", x = "Consumo de combustible", title = "Gráfica 3. Precio por tipo de combustible")+
+  theme_classic()+
+  stat_smooth(method = "lm", formula = y ~ poly(1/x) ,se = FALSE, aes(colour = "1/x"))+
+  scale_colour_manual(name="Ajuste", values=c("blue", "red"))
+
+```
+
+La función ajusta bien a los datos por lo que este se considera para la modelación.
+
+Por último graficamos el precio por tipo de clase.
+
+```{r, echo = F, out.width="60%"}
+ggplot(datos, aes(carclass, mpg))+
+  geom_boxplot()+
+  labs(x = "Clase", y = "Precio", title = "Gráfica 4. Precio por tipo de clase")+
+  theme_classic()
+```
+
+Mientras que los tipos de coche con mayor precio son los de dos asientos (TS) y minivans (MV), los que tienen menor precio son los grandes (L) y las camionetas pickup (PT). La mayor varianza se encuentra en los autos compactos y medianos.
+
+
+## 4. Selección del modelo óptimo
+
+Para elegir el modelo óptimo, tomamos en cuenta lo observado en el análisis exploratorio de datos respecto a la relación entre las variables (en particular con la variable de respuesta). Incluímos así 3 nuevos regresores a los datos parra considerar entre los modelos:
+
+ - **mpg2**: El cuadrado de mpg ($mpg^2$) para capturar cualquier relación cuadrática 
+ - **same_mpg**: Una variable indicadora que señala si mpg y mpgmpge tienen el mismo valor (1) o difieren (0)
+ - **mpg_rec**: El recíproco de mpg ($\frac{1}{mpg}$) para tratar de capturar la relación inversa que se observa entre precio y mpg
+ 
+ Con estas nuevas variables, nuestros regresores posibles son: **year, accelrate, mpg, mpgmpge, carclass_id, mpg2, mpg_rec, same_mpg**. Nótese que dejamos fuera el id del coche (pues este es un número artificial del estudio) y el nombre del vehículo (pues incluirlo como factor no solo nos daría un factor de 140 niveles, sino que haría al modelo inútil para predecir nuevos datos con nombres diferentes). Igualmente, incluimos **carclass_id** en lugar de **carclass**, aunque esto es irrelevante porque se considera como factor, luego es lo mismo si nuestros niveles son el número o nombre de la clase. 
+ 
+ El proceso para la selección del mejor modelo es un proceso iterativo. Dado que la predicción es de interés, utilizamos una modificación del **PRESS**. Esto es, la suma de cuadrados de los errores de predicción. En particular, tomamos el promedio de esta suma, y además consideramos su raíz para mantenernos en las unidades originales:
+$$\sqrt{\frac{1}{N}\sum_{i=1}^N(y_i-\hat{y}_{(i)})^2}$$
+ Luego, ajustamos el modelo en $N-1$ datos, y predecimos el dato no utilizado. Hacemos esto N veces, dejando fuera un dato distinto cada vez. Llamamos a esta métrica **RMPRESS** por **root mean prediction error sum of squares**.
+ 
+ Para aprovechar el poder de cómputo, corrimos todos los modelos posibles con los 8 regresores indicados (esto es, todos los modelos de 1 regresor, todos los modelos de 2 regresores, etc.). Esto como un primer filtro que reduzca el número de modelos a considerar. Para cada modelo calculamos la métrica mencionada arriba, así como la $R^2_{adj}$ promedio de entre todas las N pruebas. Obtuvimos los siguientes resultados:
+ 
+```{r,echo=F}
+knitr::kable(head(model_results %>% arrange(RMPRESS),10))
+```
+ Vemos que los "mejores" modelos por estos criterios tienen entre 4 y 6 regresores. En particular, la $R^2_{adj}$ máxima que se alcanzó fue de 0.7436, y el RMPRESS mínimo fue de 11722.28. Aquí cabe hacer un comentario sobre los siguientes pasos en la elección del modelo. No es suficiente simplemente tomar el modelo que minimizó RMPRESS por las siguientes razones:
+ 
+ - La diferencia en el RMPRESS entre ese y los otros modelos es mínima (de 118 entre el primer y el decimo modelo) si consideramos la variabilidad de los datos (los precios tienen una desviación estandard de $\backsim 22,000$). Este modelo es el mejor para **este conjunto de datos** únicamente. 
+ 
+ - Nos gustaría considerar otros estadísticos y criterios, no únicamente el RMPRESS. Si bien la significancia estadística no es de mucho interés pues la prioridad es la predicción, tampoco podemos ignorarla y es incluso útil para seleccionar un modelo.
+ 
+ - Nos gustaría simplificar el modelo, tanto en la reducción de número de regresores como en el tipo de variables. Esto en miras no solo a la parsimonía y mejor ajuste de los supuestos (no colinealidad, homoscedasticidad, normalidad, etc.) sino también a **no sobreajustar los datos**. Mientras más "sencillo" sea nuestro modelo, menor es la posibilidad de sobreajustar a los datos de entrenamiento y tener un mal desempeño en el conjunto de prueba. 
+ 
+
+Con esto en mente, usamos el paquete `olsrr` para obtener algunos otros estadísticos tales como el **criterio de información de Akaike**, el **$C_p$ de Mallows** y sus **$R^2$** ajustada y no ajustada. Obtenemos los siguientes modelos ordenados por su AIC: 
+
+```{r,echo=F}
+knitr::kable(head(ap %>% arrange(aic) %>% select(predictors,aic,adjr,cp)))
+```
+Observamos que obtenemos modelos muy similares a los que obtuvimos con el MRPRESS. En particular, el modelo que minimiza el AIC es el modelo
+$$msrp = \beta_0 + \beta_1 *accelrate + \beta_2 * mpg + \beta_3 * carclass\_id + \beta_4 * \frac{1}{mpg}$$
+Este presenta un AIC de 3019.79, y de hecho en términos de MRPRESS es el segundo mejor modelo. Sin embargo, este no es el modelo final que tomamos como modelo óptimo, pues viola algunos supuestos, como se verá a continuación. Además, retomando la discusión anterior, tomar el mejor modelo solo por su RMPRESS es "engañarse" puesto que quizá este modelo está sobreajustando los datos. El modelo final que tomamos es similar:
+
+$$msrp = \beta_0 + \beta_1 *accelrate + \beta_2 * mpgmpge + \beta_3 * carclass\_id + \beta_4 * \frac{1}{mpg}$$
+Si bien es prácticamente idéntico al anterior, lo preferimos por las siguientes razones:
+
+- Tiene estadísticos muy similares al anterior, pero se ajusta mejor a los supuestos de la regresión lineal múltiple. Luego, sacrificamos un poco el poder de predicción por robustez estadística, en miras a generalizar mejor para nuevos datos. 
+
+- Tomar **mpgmpge** en lugar de **mpg** tiene algunos beneficios que se comentan a continuación, pero desde un punto de vista del contexto, hace más sentido tomar esta variable: esta representa el máximo entre el mpg o su equivalente (para vehículos eléctricos); en la determinación del precio realmente importa el valor "real" o equivalente , luego este tiene mayor injerencia en el precio. 
+
+A continuación estudiamos este modelo desde una perspectiva estadística. 
+
+El modelo final entonces es: 
+
+$$msrp = -37867.3 + 141.9*mpgmpge + 3259*accelrate+\frac{1115474.1}{mpg}+\\
+27049.3\alpha_2 -4062.1\alpha_3 + 10641.2\alpha_4-21018.6\alpha_5-4932.5\alpha_6-5368.9\alpha_7$$
+Donde $\alpha_i$ es una indicadora que vale 1 si el vehículo pertenece a la clase $i$ y 0 en otro caso. 
+
+
+## 5. Validación del modelo con datos nuevos
+
+La prueba de fuego para un modelo de predicción es su desempeño en datos que no ha visto. Para esto, utilizamos 13 observaciones nuevas que provienen del mismo juego de datos, y predecimos los precios de estos autos, para después compararlos a los precios reales. 
+
+Los datos nuevos son
+```{r,echo=F,message=F,warning=F}
+
+datos_extra <- read_csv("datosFin-1.csv")
+knitr::kable(head(datos_extra,5))
+datos_extra$mpg_rec <- 1/datos_extra$mpg
+datos_extra$carclass_id <- factor(datos_extra$carclass_id)
+datos_extra$msrp<-datos_extra$msrp/1000
+datos_extra$mpg<-datos_extra$mpg*0.35400603
+datos_extra$mpgmpge<-datos_extra$mpgmpge*0.35400603
+
+```
+
+Usamos nuestro modelo para obtener las predicciones de los precios, que a continuación presentamos junto con los valores reales y su diferencia (Prediccion-Real). 
+
+```{r,echo=F}
+modelo_teorico2 <- lm(msrp ~ accelrate + mpgmpge +  carclass_id+mpg_rec , data=datos)
+predicciones <- predict(modelo_teorico2,datos_extra)
+valores_reales <- datos_extra$msrp
+
+resultados<-data.frame(
+  Prediccion = predicciones,
+  Real =  valores_reales,
+  Diferencia = predicciones-valores_reales
+)
+print(sqrt(mean((resultados$Diferencia)^2)))
+knitr::kable(resultados)
+```
+
+Este modelo tiene un **RMSE (Raíz del error cuadrático médio) de 13.73475**, que es mejor al RMSE de un predictor "ingenuo" que siempre predijera el precio promedio de los datos originales (RMSE de 14647.17). Dos métricas más que pueden ser interesantes son el error máximo del modelo (**36.2753511**) y el error mínimo del modelo (**0.3396452**). Además, nuestro modelo suele sobreestimar los precios de los coches. 
+
+En general, tenemos un modelo bueno, aunque no está demasiado lejos del modelo ingenuo. Los errores de predicción no son muy grandes, y en el peor de los casos tenemos un error de menos de 37,000 dólares. Si consideramos que la desviación estándard de los precios originales era de 30,000 dolares, estamos, aproximadamente, en rango.
+
+
+DESPUÉS DE ANÁLISIS DE CÓMO ELEGIMOS EL MODELO (ULI)
+
+# Validación del modelo
+
+```{r}
+modR<- lm(msrp~accelrate+mpgmpge+carclass_id+mpg_rec,data = datos)
+plot(modR)
+```
+
+En la gráfica de residuales notamos que ligeramente empieza a aumentar su rango por debajo del cero, sin embargo, notamos que por arriba no hay alguna tendencia que refleje que en general está aumentando la varianza o variabilidad de los residuales conforme aumentan los datos ajustados. Tampoco se refleja alguna tendencia de los datos que confirme cierta relación entre los ajustados y los residuales. Por lo que de la gráfica tenemos la primera conclusión de que existe homocedasticidad. 
+
+Luego, observamos que en la gráfica (qq-norm) casi todos los datos se encuentran dentro de una línea entre los cuantiles de -2 y 2, con lo cual concluimos que los datos no rompen el supuesto de normalidad. Además, notamos que hay 3 datos que se desvían; sin embargo, según la tercera gráfica estos datos se pueden considerar atípicos, lo cual explicaría su desviación sobre la gráfica qq-norm. Por último, en la cuarta gráfica notamos que aunque estos datos sean atípicos, no son influyentes porque no están fuera del rango normal de la distancia de cook.
+
+
+
+
+
+
+```{r}
+summary(modR)
+bptest(modR)
+residualPlots(modR)
+lillie.test(residuals(modR))
+```
+
+
+#### Checando autocorrelación y colinealidad
+
+
+```{r}
+vif(modR)
+
+acf(x = resid(modR))
+
+plot(x = 1:length(residuals(modR)), y = residuals(modR))
+
+plot(y = residuals(modR)[1:length(residuals(modR))-1], x = residuals(modR)[2:length(residuals(modR))])
+
+```
+
+En la tabla 1, tenemos valores VIF para los distintos regresores utilizados, y notamos que no son mayores a 10, con lo cual concluimos que no hay problemas de colinealidad en la matriz de datos para los regresores. 
+
+Por último, en la última gráfica, observamos que para cada nivel de retraso entre cada residual no hay valores de correlación que se desvíen del rango normal.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,8 @@
+﻿Variable,Descripcion,Tipo,Unidades,Min,Max
+msrp,Precio de los vehículos híbridos,Cuantitativa de carácter continuo,Dólares de 2013,11849,118544
+accelrate,Tasa de aceleración de vehículo,Cuantitativa de carácter continuo,km/h/s,6.29,20.41
+year,Año del vehículo,Cuantitativa de carácter discreto,Años,1997,2013
+mpg,Consumo de combustible,Cuantitativa de carácter continuo,km/litro,17,72.92
+mpgmpge,Máximo consumo de combustible,Cuantitativa de carácter continuo,km/litro,17,100
+carclass_id,Clase de vehículo,Cualitativa compuesta por caracteres,Niveles,1,7
+vehicle,Modelo de vehículos,Cualitativa compuesta por caracteres,Niveles,Kluger,Optima K5
