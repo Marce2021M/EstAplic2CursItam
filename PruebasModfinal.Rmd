@@ -1,0 +1,110 @@
+---
+title: "Pruebas"
+author: "Equipo"
+date: "2022-11-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+
+library(wordcloud)
+library(wordcloud2)
+library(tm)
+library(forcats)
+library(GGally)
+library(outliers)
+library(ggcorrplot)
+
+library(car)
+
+library(lmtest)
+library(glmnet)
+
+library(nortest)
+library(moments)
+
+library(MASS)
+```
+
+
+```{r}
+file <- read.csv("datosFit.csv")
+file$carclass<-as.factor(file$carclass)
+file$carclass_id<-as.factor(file$carclass_id)
+file$mpg_rec<-1/file$mpg
+file$mpg2<-(file$mpg)^2
+file$samempg<-file$mpg == file$mpgmpge
+file$samempg<-as.factor(file$samempg)
+file$carclass_id<-as.factor(file$carclass_id)
+```
+
+
+
+DESPUÉS DE ANÁLISIS DE CÓMO ELEGIMOS EL MODELO (ULI)
+
+# Validación del modelo
+
+```{r}
+modR<- lm(msrp~accelrate+mpgmpge+carclass_id+mpg_rec,data = file)
+plot(modR)
+```
+
+En la gráfica de residuales notamos que ligeramente empieza a aumentar su rango por debajo del cero, sin embargo, notamos que por arriba no hay alguna tendencia que refleje que en general está aumentando la varianza o variabilidad de los residuales conforme aumentan los datos ajustados. Tampoco se refleja alguna tendencia de los datos que confirme cierta relación entre los ajustados y los residuales. Por lo que de la gráfica tenemos la primera conclusión de que existe homocedasticidad. 
+
+Luego, observamos que en la gráfica (qq-norm) casi todos los datos se encuentran dentro de una línea entre los cuantiles de -2 y 2, con lo cual concluimos que los datos no rompen el supuesto de normalidad. Además, notamos que hay 3 datos que se desvían; sin embargo, según la tercera gráfica estos datos se pueden considerar atípicos, lo cual explicaría su desviación sobre la gráfica qq-norm. Por último, en la cuarta gráfica notamos que aunque estos datos sean atípicos, no son influyentes porque no están fuera del rango normal de la distancia de cook.
+
+
+
+
+
+
+```{r}
+summary(modR)
+bptest(modR)
+residualPlots(modR)
+lillie.test(residuals(modR))
+```
+
+
+#### Checando autocorrelación y colinealidad
+
+
+```{r}
+vif(modR)
+
+acf(x = resid(modR))
+
+plot(x = 1:length(residuals(modR)), y = residuals(modR))
+
+plot(y = residuals(modR)[1:length(residuals(modR))-1], x = residuals(modR)[2:length(residuals(modR))])
+
+```
+
+En la tabla 1, tenemos valores VIF para los distintos regresores utilizados, y notamos que no son mayores a 10, con lo cual concluimos que no hay problemas de colinealidad en la matriz de datos para los regresores. 
+
+Por último, en la última gráfica, observamos que para cada nivel de retraso entre cada residual no hay valores de correlación que se desvíen del rango normal.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -81,6 +81,14 @@ library(ggcorrplot)
 
 library(car)
 
+library(lmtest)
+library(glmnet)
+
+library(nortest)
+library(moments)
+
+library(MASS)
+
 file <- read.csv("datosFit.csv")
 
 ```
@@ -91,6 +99,7 @@ glimpse(file)
 summary(file)
 
 file$carclass<-as.factor(file$carclass)
+file$carclass_id<-as.factor(file$carclass_id)
 ```
 ### Búsqueda de NA´s
 
@@ -263,59 +272,68 @@ plot(x=file$mpg, y=file$msrp, xlab = "Consumo de combustible",ylab = "Precio")
 
 
 
+```{r}
+plot(x=1/file$mpg, y=log(file$msrp))
+```
+
+
 
 ### Regresión lineal
 
 
 ....
+```{r}
+file$mpgmpge_rec<-1/file$mpgmpge
+```
 
 #### Sin incluir nombres de vehículos
 
 ```{r}
-mod1<- lm(msrp~accelrate+mpg+year+carclass+mpgmpge,data = file)
+mod1<- lm(log(msrp)~accelrate+year+mpg_rec+carclass+mpgmpge,data = file)
 
 summary(mod1)
 ```
-
 ```{r}
-vif(mod1)
-
-ka<- mod1$
-
+mod1 <- stepAIC(lm(log(msrp)~1,data=file), scope=log(msrp)~accelrate+year+mpg_rec+carclass+mpgmpge,
+direction=c("both","forward","backward")[2], trace=3)
 
 ```
-```{r}
-scaleEigen <- function(fit){
- # Calculate the eigenvalues and eigenvectors
- #
- # args: fit - an object of the lm or glm class from which you would
- #             like to extract the X matrix
- #
- # Output: eigenvalues and eigenvectors of the X'X matrix
- #
- # Method:
- #         fit <- lm(y ~ x1 + x2 + x3, data = dataset)
- #         summary(fit)
- #         scaledEigen(fit)
- #
- model.data <- fit$model  # The data used in the regression
- Xvec <- as.matrix(cbind(1, model.data[,-1]))  # X matrix including intercept
- Xvec <- apply(Xvec, 2 , function(x) x/sqrt(sum(x^2)))  # Rescale the X matrix
- eigenValues <- eigen(t(Xvec)%*%Xvec)
- return(eigenValues)
-}
 
-scaleEigen(mod1)
 
-```
 
 
 ```{r}
 plot(mod1)
 ```
 
-```{r}
 
+
+```{r}
+summary(mod1)
+bptest(mod1)
+residualPlots(mod1)
+```
+#### Checando autocorrelación y colinealidad
+
+
+```{r}
+vif(mod1)
+
+acf(x = resid(mod1))
+
+plot(x = 1:length(residuals(mod1)), y = residuals(mod1))
+
+plot(y = residuals(mod1)[1:length(residuals(mod1))-1], x = residuals(mod1)[2:length(residuals(mod1))])
+
+```
+
+
+### segundo intento msr
+
+```{r}
+mod1<- lm(msrp~accelrate+mpg+year+carclass+mpgmpge,data = file)
+
+boxCoxVariable(mod1)
 ```
 
 
@@ -329,6 +347,351 @@ plot(mod1)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Prueba de modelos de Uli
+
+
+
+```{r}
+file$mpg_rec<-1/file$mpg
+file$mpg2<-(file$mpg)^2
+file$samempg<-file$mpg == file$mpgmpge
+file$samempg<-as.factor(file$samempg)
+file$carclass_id<-as.factor(file$carclass_id)
+
+```
+
+
+### Primer modelo
+
+```{r}
+modp1<-lm(msrp~mpg+mpg_rec+accelrate+mpgmpge+carclass_id,data = file)
+plot(modp1)
+```
+
+```{r}
+summary(modp1)
+bptest(modp1)
+residualPlots(modp1)
+```
+#### Checando autocorrelación y colinealidad
+
+
+```{r}
+vif(modp1)
+
+acf(x = resid(modp1))
+
+plot(x = 1:length(residuals(modp1)), y = residuals(modp1))
+
+plot(y = residuals(modp1)[1:length(residuals(modp1))-1], x = residuals(modp1)[2:length(residuals(modp1))])
+
+```
+
+#### Arreglando colinealidad
+
+```{r}
+model <- glmnet(x=select(file,"mpg","mpg_rec","accelrate","mpgmpge"), y=file$msrp,data=file, alpha = 0)
+
+summary(model)
+```
+
+
+```{r}
+#perform k-fold cross-validation to find optimal lambda value
+cv_model <- cv.glmnet(x=as.matrix(select(file,"mpg","mpg_rec","accelrate","mpgmpge")), y=file$msrp,data=file, alpha = 0)
+
+#find optimal lambda value that minimizes test MSE
+best_lambda <- cv_model$lambda.min
+best_lambda
+
+
+
+#produce plot of test MSE by lambda value
+plot(cv_model) 
+best_model <- glmnet(x=as.matrix(select(file,"mpg","mpg_rec","accelrate","mpgmpge")), y=file$msrp,data=file,  alpha = 0, lambda = best_lambda)
+coef(best_model)
+plot(model, xvar = "lambda")
+```
+```{r}
+#use fitted best model to make predictions
+y_predicted <- predict(model, s = best_lambda, newx =as.matrix(select(file,"mpg","mpg_rec","accelrate","mpgmpge")))
+
+#find SST and SSE
+sst <- sum((file$msrp - mean(file$msrp))^2)
+sse <- sum((y_predicted - file$msrp)^2)
+
+#find R-Squared
+rsq <- 1 - sse/sst
+rsq
+
+```
+
+
+
+
+
+### Segundo modelo
+
+```{r}
+modp2<-lm(msrp~mpg+mpg_rec+accelrate+carclass_id,data = file)
+plot(modp1)
+```
+
+```{r}
+summary(modp2)
+bptest(modp2)
+residualPlots(modp2)
+```
+#### Checando autocorrelación y colinealidad
+
+
+```{r}
+vif(modp2)
+
+acf(x = resid(modp2))
+
+plot(x = 1:length(residuals(modp2)), y = residuals(modp2))
+
+plot(y = residuals(modp2)[1:length(residuals(modp2))-1], x = residuals(modp2)[2:length(residuals(modp2))])
+
+```
+
+#### Arreglando colinealidad
+
+
+
+### Tercer modelo
+
+```{r}
+modp2<-lm(msrp~year+mpg+mpg_rec+accelrate+mpgmpge+carclass_id,data = file)
+plot(modp1)
+```
+
+```{r}
+summary(modp2)
+bptest(modp2)
+residualPlots(modp2)
+```
+#### Checando autocorrelación y colinealidad
+
+
+```{r}
+vif(modp2)
+
+acf(x = resid(modp2))
+
+plot(x = 1:length(residuals(modp2)), y = residuals(modp2))
+
+plot(y = residuals(modp2)[1:length(residuals(modp2))-1], x = residuals(modp2)[2:length(residuals(modp2))])
+
+```
+
+#### Arreglando colinealidad
+
+
+### Cuarto modelo
+
+```{r}
+modp2<-lm(msrp~mpg_rec+mpg2+accelrate+mpgmpge+carclass_id,data = file)
+plot(modp1)
+```
+
+```{r}
+summary(modp2)
+bptest(modp2)
+residualPlots(modp2)
+```
+#### Checando autocorrelación y colinealidad
+
+
+```{r}
+vif(modp2)
+
+acf(x = resid(modp2))
+
+plot(x = 1:length(residuals(modp2)), y = residuals(modp2))
+
+plot(y = residuals(modp2)[1:length(residuals(modp2))-1], x = residuals(modp2)[2:length(residuals(modp2))])
+
+```
+
+#### Arreglando colinealidad
+
+
+
+
+
+### Quinto modelo
+
+```{r}
+modp2<-lm(msrp~mpg+mpg_rec+accelrate+samempg+carclass_id,data = file)
+plot(modp1)
+```
+
+```{r}
+summary(modp2)
+bptest(modp2)
+residualPlots(modp2)
+```
+#### Checando autocorrelación y colinealidad
+
+
+```{r}
+vif(modp2)
+
+acf(x = resid(modp2))
+
+plot(x = 1:length(residuals(modp2)), y = residuals(modp2))
+
+plot(y = residuals(modp2)[1:length(residuals(modp2))-1], x = residuals(modp2)[2:length(residuals(modp2))])
+
+```
+
+#### Arreglando colinealidad
+
+
+
+
+### Sexto modelo
+
+```{r}
+modp2<-lm(msrp~mpg_rec+mpg2+accelrate+carclass_id,data = file)
+plot(modp1)
+```
+
+```{r}
+summary(modp2)
+bptest(modp2)
+residualPlots(modp2)
+```
+#### Checando autocorrelación y colinealidad
+
+
+```{r}
+vif(modp2)
+
+acf(x = resid(modp2))
+
+plot(x = 1:length(residuals(modp2)), y = residuals(modp2))
+
+plot(y = residuals(modp2)[1:length(residuals(modp2))-1], x = residuals(modp2)[2:length(residuals(modp2))])
+
+```
+
+#### Arreglando colinealidad
+
+
+
+### Séptimo modelo
+
+```{r}
+modp2<-lm(msrp~year+mpg+mpg_rec+mpg2+accelrate+carclass_id,data = file)
+plot(modp1)
+```
+
+```{r}
+summary(modp2)
+bptest(modp2)
+residualPlots(modp2)
+```
+#### Checando autocorrelación y colinealidad
+
+
+```{r}
+vif(modp2)
+
+acf(x = resid(modp2))
+
+plot(x = 1:length(residuals(modp2)), y = residuals(modp2))
+
+plot(y = residuals(modp2)[1:length(residuals(modp2))-1], x = residuals(modp2)[2:length(residuals(modp2))])
+
+```
+
+#### Arreglando colinealidad
+
+
+
+### Octavo modelo
+
+```{r}
+modp2<-lm(msrp~mpg+mpg_rec+mpg2+accelrate+mpgmpge+carclass_id,data = file)
+plot(modp1)
+```
+
+```{r}
+summary(modp2)
+bptest(modp2)
+residualPlots(modp2)
+```
+#### Checando autocorrelación y colinealidad
+
+
+```{r}
+vif(modp2)
+
+acf(x = resid(modp2))
+
+plot(x = 1:length(residuals(modp2)), y = residuals(modp2))
+
+plot(y = residuals(modp2)[1:length(residuals(modp2))-1], x = residuals(modp2)[2:length(residuals(modp2))])
+
+```
+
+#### Arreglando colinealidad
+
+
+
+### Décimo modelo
+
+```{r}
+modp2<-lm(msrp~year+mpg_rec+mpg2+accelrate+mpgmpge+carclass_id,data = file)
+plot(modp1)
+```
+
+```{r}
+summary(modp2)
+bptest(modp2)
+residualPlots(modp2)
+```
+#### Checando autocorrelación y colinealidad
+
+
+```{r}
+vif(modp2)
+
+acf(x = resid(modp2))
+
+plot(x = 1:length(residuals(modp2)), y = residuals(modp2))
+
+plot(y = residuals(modp2)[1:length(residuals(modp2))-1], x = residuals(modp2)[2:length(residuals(modp2))])
+
+```
+
+#### Arreglando colinealidad
 
 
 
