@@ -214,22 +214,25 @@ resultados<-data.frame(
   Real =  valores_reales,
   Diferencia = predicciones-valores_reales
 )
-print(sqrt(mean((resultados$Diferencia)^2)))
 knitr::kable(resultados)
 ```
 
 Este modelo tiene un **RMSE (Raíz del error cuadrático médio) de 13.73475**, que es mejor al RMSE de un predictor "ingenuo" que siempre predijera el precio promedio de los datos originales (RMSE de 14647.17). Dos métricas más que pueden ser interesantes son el error máximo del modelo (**36.2753511**) y el error mínimo del modelo (**0.3396452**). Además, nuestro modelo suele sobreestimar los precios de los coches. 
 
-En general, tenemos un modelo bueno, aunque no está demasiado lejos del modelo ingenuo. Los errores de predicción no son muy grandes, y en el peor de los casos tenemos un error de menos de 37,000 dólares. Si consideramos que la desviación estándard de los precios originales era de 30,000 dolares, estamos, aproximadamente, en rango.
+En general, tenemos un modelo bueno, aunque no está demasiado lejos del modelo ingenuo. Los errores de predicción no son muy grandes, y en el peor de los casos tenemos un error de menos de 37,000 dólares. Si consideramos que la desviación estándard de los precios originales era de 21,954.99 dolares, estamos, aproximadamente, en rango.
 
-
-DESPUÉS DE ANÁLISIS DE CÓMO ELEGIMOS EL MODELO (ULI)
+Ahora procederemos a validar el modelo 
 
 # Validación del modelo
 
-```{r}
+```{r,echo=F, message=FALSE, warning=FALSE}
 modR<- lm(msrp~accelrate+mpgmpge+carclass_id+mpg_rec,data = datos)
 plot(modR)
+```
+
+
+```{r}
+
 ```
 
 En la gráfica de residuales notamos que ligeramente empieza a aumentar su rango por debajo del cero, sin embargo, notamos que por arriba no hay alguna tendencia que refleje que en general está aumentando la varianza o variabilidad de los residuales conforme aumentan los datos ajustados. Tampoco se refleja alguna tendencia de los datos que confirme cierta relación entre los ajustados y los residuales. Por lo que de la gráfica tenemos la primera conclusión de que existe homocedasticidad. 
@@ -241,7 +244,7 @@ Luego, observamos que en la gráfica (qq-norm) casi todos los datos se encuentra
 
 
 
-```{r}
+```{r,echo=FALSE}
 summary(modR)
 bptest(modR)
 residualPlots(modR)
@@ -252,7 +255,7 @@ lillie.test(residuals(modR))
 #### Checando autocorrelación y colinealidad
 
 
-```{r}
+```{r, echo=FALSE}
 vif(modR)
 
 acf(x = resid(modR))
